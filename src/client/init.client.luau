@@ -1,10 +1,10 @@
 local Players=game:GetService("Players")
 local RS=game:GetService("ReplicatedStorage")
-local UIS=game:GetService("UserInputService")
 local player=Players.LocalPlayer
 local event=RS:WaitForChild("MysteryAction")
 local C=require(RS.Shared.MysteryConfig)
-local state=nil; local page=nil; local spectating=false; local spectateIndex=1; local currency="coins"
+local Shop=require(script.ShopUI)
+local state=nil; local page=nil; local spectating=false; local spectateIndex=1
 local gui=Instance.new("ScreenGui"); gui.Name="MysteryHUD"; gui.ResetOnSpawn=false; gui.Parent=player:WaitForChild("PlayerGui")
 local function roundCorner(o) Instance.new("UICorner",o).CornerRadius=UDim.new(0,10) end
 local function label(parent,text,size,pos,height)
@@ -56,20 +56,7 @@ render=function()
  if not page or not state then return end
  title.Text=page.."  •  click its menu button to close"
  if page=="SHOP" then
-  row("Currency: "..string.upper(currency).." — tap to change",function() currency=currency=="coins" and "gems" or "coins"; render() end)
-  row("CASE ODDS: Common 65% • Uncommon 23% • Rare 10% • Legendary 1.9% • Unique 0.1%. Duplicates possible.")
-  if not state.paidRandomAllowed then row("Gem cases unavailable for this account. Earned-coin cases are available.") end
-  for _,kind in ipairs({"Knife","Gun"}) do
-   local boxes=kind=="Knife" and C.KnifeBoxes or C.GunBoxes
-   for i,name in ipairs(boxes) do
-    row(name.." "..kind.." Box — "..(currency=="coins" and C.CaseCoins.." coins" or C.CaseGems.." gems"),function() event:FireServer("Case",kind,i,currency) end)
-   end
-  end
-  for _,kind in ipairs({"Emote","Radio","Pet"}) do
-   local catalog=kind=="Emote" and C.Emotes or kind=="Radio" and C.Radios or C.Pets
-   local names={}; for name in pairs(catalog) do table.insert(names,name) end; table.sort(names)
-   for _,name in ipairs(names) do row(kind..": "..name.." — "..catalog[name].." coins",function() event:FireServer("Buy",kind,name) end) end
-  end
+  Shop.render(list,state,function(...) event:FireServer(...) end,render)
  elseif page=="INVENTORY" then
   row("Tap owned skins to equip for future rounds. Tap emotes to perform them. Radios are cosmetic; pets follow you.")
   local items={}; for id in pairs(state.items) do table.insert(items,id) end; table.sort(items)
@@ -124,15 +111,17 @@ local function wireCharacter(char)
 end
 player.CharacterAdded:Connect(wireCharacter); if player.Character then wireCharacter(player.Character) end
 event.OnClientEvent:Connect(function(s)
+ local previous=state
  state=s
  local mins=math.floor(s.time/60); local secs=s.time%60
  status.Text=s.phase.."  |  "..string.format("%d:%02d",mins,secs).."  |  "..s.role
- wallet.Text=s.coins.." coins  •  "..s.gems.." gems"..(s.saving and "" or "  •  session-only progress")
+ wallet.Text=s.coins.." coins  •  "..s.gems.." gems  •  Round bag: "..(s.roundCoins or 0).."/"..C.RoundCoinLimit..(s.saving and "" or "  •  session-only progress")
  attackButton.Visible=s.phase=="Round" and s.alive and s.role~="Innocent"
  crosshair.Visible=attackButton.Visible
  if s.message~="" then toast.Text=s.message end
+ if s.reward then Shop.reveal(gui,s.reward) end
  if s.alive then spectating=false end
  updateSpectate()
- if page then render() end
+ if page and (not previous or s.message~="" or previous.phase~=s.phase or previous.coins~=s.coins or previous.gems~=s.gems or page=="VOTE" or page=="SPECTATE") then render() end
 end)
 event:FireServer("Sync")

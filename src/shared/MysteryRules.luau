@@ -18,4 +18,7 @@ end
 function Rules.canPickup(phase,isAlive,role,distance)
  return phase=="Round" and isAlive==true and role=="Innocent" and distance<=11
 end
+function Rules.canCollect(phase,isAlive,collected,limit)
+ return phase=="Round" and isAlive==true and collected<limit
+end
 return Rules

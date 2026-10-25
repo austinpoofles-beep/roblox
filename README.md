@@ -16,11 +16,11 @@ Use Studio's **Test → Server & Clients** with **at least 3 players** to test a
 - Murderer wins by eliminating everyone; innocents win when the murderer dies or time expires. A sheriff who shoots an innocent is eliminated; the innocent survives.
 - The sheriff's gun drops on death. Only a nearby, living innocent can claim it using the prompt. The murderer cannot pick it up.
 - Lobby players and eliminated players can use SPECTATE to cycle through surviving players. Roles are sent only to the player who owns them.
-- Surviving players receive 100 coins at round end. Starting balance is 500 coins.
+- Surviving players receive 100 coins at round end. Starting balance is 500 coins. Collect gold coins around the map perimeter for 10 coins each, with a 30-coin bag per round (300 currency). Coins respawn after 12 seconds and collected currency is retained after elimination. Collection is server-validated for active players, distance, and bag capacity.
 
 ## Shop and inventory
 
-Six knife boxes and four gun boxes each have five cosmetic tiers. Cases cost 250 coins or 25 gems. Actual odds: gray common 65%, blue uncommon 23%, green rare 10%, red legendary 1.9%, pink unique 0.1%. Odds are displayed before opening; duplicates are retained. Weapons are original recolored prototype models and do not grant combat advantages. Skins apply the next time a weapon is issued.
+Six knife boxes and four gun boxes each have five cosmetic tiers. Cases cost 250 coins or 25 gems. Actual odds: gray common 65%, blue uncommon 23%, green rare 10%, red legendary 1.9%, pink unique 0.1%. The shop has category tabs, case cards, 3D reward previews, explicit coin/gem buttons, and a result reveal. Odds are displayed before opening; duplicates are retained. Weapons are original recolored prototype models and do not grant combat advantages. Skins apply the next time a weapon is issued.
 
 Emotes, cosmetic backpack radios, and geometric companion pets are purchasable with earned coins. Emotes use avatar-supported animation names. Radios are visual accessories; music playback and custom audio are not included. Pets are welded cosmetic companions, not pathfinding NPCs. Maps and items use generated Roblox parts, with no third-party game assets.
 

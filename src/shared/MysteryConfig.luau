@@ -12,6 +12,9 @@ C.Rarities = {
 }
 C.KnifeBoxes={"Woodland","Glacier","Solar","Shadow","Ocean","Arcane"}
 C.GunBoxes={"Frontier","Neon","Steel","Cosmic"}
+C.CoinValue=10
+C.RoundCoinLimit=30
+C.CoinRespawnSeconds=12
 C.CaseCoins=250
 C.CaseGems=25
 C.Products={} -- [Roblox developer product ID] = number of gems; configure before selling gems.

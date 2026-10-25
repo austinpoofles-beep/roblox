@@ -10,6 +10,7 @@ local event=Instance.new("RemoteEvent"); event.Name="MysteryAction"; event.Paren
 local store=DSS:GetDataStore("WhosTheKiller_v1")
 local rng=Random.new()
 local profiles,roles,alive,votes,cooldowns={},{},{},{},{}
+local roundCoins={}
 local phase="Waiting"; local remaining=0; local roundId=0; local mapFolder=nil; local dropped=nil
 local finish
 local function mergeReceipts(data,old)
@@ -20,12 +21,12 @@ local function mergeReceipts(data,old)
  return data
 end
 local function profile() return {coins=C.StarterCoins,gems=0,items={},equipped={},receipts={}} end
-local function send(p,message)
+local function send(p,message,reward)
  local entry=profiles[p]; if not entry then return end
  local targets={}; for player in pairs(alive) do table.insert(targets,{id=player.UserId,name=player.DisplayName}) end
  local totals={0,0,0}; for _,i in pairs(votes) do totals[i]+=1 end
  event:FireClient(p,{phase=phase,time=remaining,role=roles[p] or "Spectator",alive=alive[p]==true,targets=targets,votes=totals,
- coins=entry.data.coins,gems=entry.data.gems,items=entry.data.items,equipped=entry.data.equipped,message=message or "",saving=entry.canSave,paidRandomAllowed=entry.paidRandomAllowed==true})
+ roundCoins=roundCoins[p] or 0,coins=entry.data.coins,gems=entry.data.gems,items=entry.data.items,equipped=entry.data.equipped,message=message or "",reward=reward,saving=entry.canSave,paidRandomAllowed=entry.paidRandomAllowed==true})
 end
 local function broadcast(message) for _,p in ipairs(Players:GetPlayers()) do send(p,message) end end
 local function save(p)
@@ -132,7 +133,7 @@ Players.PlayerRemoving:Connect(function(p)
  save(p)
  local entry=profiles[p]
  if entry and entry.canSave then pcall(function() store:UpdateAsync("p"..p.UserId,function(old) if old and old.session==game.JobId then old.lockUntil=0; return old end return nil end) end) end
- profiles[p]=nil; roles[p]=nil; cooldowns[p]=nil
+ profiles[p]=nil; roles[p]=nil; cooldowns[p]=nil; roundCoins[p]=nil
 end)
 local function buyCase(p,kind,index,currency)
  local entry=profiles[p]; local d=entry.data
@@ -144,7 +145,7 @@ local function buyCase(p,kind,index,currency)
  d[currency]-=cost
  local tier=C.roll(rng:NextInteger(1,10000)); local id=C.itemId(kind,boxes[index],tier)
  d.items[id]=(d.items[id] or 0)+1
- send(p,"Unboxed "..C.Rarities[tier].name.." "..boxes[index].." "..kind.."!")
+ send(p,"Unboxed "..C.Rarities[tier].name.." "..boxes[index].." "..kind.."!",{kind=kind,box=boxes[index],tier=tier})
 end
 local function accessory(p,kind,name)
  local char=p.Character; if not char then return end
@@ -234,6 +235,32 @@ Marketplace.ProcessReceipt=function(receipt)
  if ok and updated then entry.data=mergeReceipts(entry.data,updated); send(p,"Gems added to your inventory!"); return Enum.ProductPurchaseDecision.PurchaseGranted end
  return Enum.ProductPurchaseDecision.NotProcessedYet
 end
+local function spawnCoins(folder)
+ for index=1,24 do
+  local side=math.floor((index-1)/6)
+  local offset=-55+((index-1)%6)*22
+  local position=side==0 and Vector3.new(-65,2,500+offset) or side==1 and Vector3.new(65,2,500+offset) or side==2 and Vector3.new(offset,2,435) or Vector3.new(offset,2,565)
+  local coin=W.part(folder,"CollectibleCoin",Vector3.new(0.4,2,2),position,Color3.fromRGB(255,206,68),Enum.Material.Neon)
+  coin.Shape=Enum.PartType.Cylinder; coin.CanCollide=false
+  local claimed=false
+  coin.Touched:Connect(function(hit)
+   if claimed or phase~="Round" then return end
+   local character=hit:FindFirstAncestorOfClass("Model")
+   local p=character and Players:GetPlayerFromCharacter(character)
+   local entry=p and profiles[p]; local r=p and root(p)
+   if not entry or entry.busy or not r or (r.Position-coin.Position).Magnitude>6 then return end
+   if not Rules.canCollect(phase,alive[p],roundCoins[p] or 0,C.RoundCoinLimit) then return end
+   claimed=true; coin.Transparency=1; coin.CanTouch=false
+   roundCoins[p]=(roundCoins[p] or 0)+1; entry.data.coins+=C.CoinValue
+   send(p,"+"..C.CoinValue.." coins! Collect coins to open cases for free.")
+   task.delay(C.CoinRespawnSeconds,function()
+    if coin.Parent and phase=="Round" and mapFolder==folder then
+     claimed=false; coin.Transparency=0; coin.CanTouch=true
+    end
+   end)
+  end)
+ end
+end
 local function eligible()
  local list={}
  for _,p in ipairs(Players:GetPlayers()) do
@@ -257,7 +284,7 @@ task.spawn(function()
   local spawns
   mapFolder,spawns=W.map(selected)
   for i=#list,2,-1 do local j=rng:NextInteger(1,i); list[i],list[j]=list[j],list[i] end
-  roundId+=1; roles={}; alive={}; phase="Round"; remaining=C.RoundSeconds
+  roundId+=1; roles={}; alive={}; roundCoins={}; phase="Round"; remaining=C.RoundSeconds
   for i,p in ipairs(list) do
    roles[p]=i==1 and "Murderer" or i==2 and "Sheriff" or "Innocent"; alive[p]=true
    clearTools(p); teleport(p,spawns[(i-1)%#spawns+1])
@@ -265,6 +292,7 @@ task.spawn(function()
    if i==1 then tool(p,"Knife") elseif i==2 then tool(p,"Gun") end
    send(p,W.MapNames[selected].." — Your role: "..roles[p])
   end
+  spawnCoins(mapFolder)
   while phase=="Round" and remaining>0 do
    task.wait(1); remaining-=1
    for p in pairs(alive) do
