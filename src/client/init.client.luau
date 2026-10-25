@@ -31,7 +31,11 @@ modal.BackgroundColor3=Color3.fromRGB(24,32,49); modal.Visible=false; modal.Pare
 local title=label(modal,"",19,UDim2.fromOffset(10,6),36)
 local list=Instance.new("ScrollingFrame"); list.Size=UDim2.new(1,-16,1,-55); list.Position=UDim2.fromOffset(8,48)
 list.BackgroundTransparency=1; list.BorderSizePixel=0; list.ScrollBarThickness=6; list.AutomaticCanvasSize=Enum.AutomaticSize.Y; list.CanvasSize=UDim2.new(); list.Parent=modal
-local layout=Instance.new("UIListLayout"); layout.Padding=UDim.new(0,8); layout.Parent=list
+local layout=Instance.new("UIListLayout"); layout.Padding=UDim.new(0,8); layout.SortOrder=Enum.SortOrder.LayoutOrder; layout.Parent=list
+local rowOrder=0
+list.ChildAdded:Connect(function(child)
+ if child:IsA("GuiObject") then rowOrder+=1; child.LayoutOrder=rowOrder end
+end)
 local function row(text,callback,color)
  if callback then return button(list,text,callback,color) end
  local t=label(list,text,14,nil,55); t.Position=UDim2.new(); return t
@@ -53,10 +57,22 @@ end
 render=function()
  for _,child in ipairs(list:GetChildren()) do if child~=layout then child:Destroy() end end
  modal.Visible=page~=nil
- if not page or not state then return end
+ if not page then return end
  title.Text=page.."  •  click its menu button to close"
  if page=="SHOP" then
-  Shop.render(list,state,function(...) event:FireServer(...) end,render)
+  -- Catalog browsing does not depend on the server profile finishing its load.
+  local ok,err=pcall(function()
+   Shop.render(list,state or {items={},paidRandomAllowed=false},function(...)
+    if not state then toast.Text="Connecting to the server. You can browse cases while your inventory loads."; return end
+    event:FireServer(...)
+   end,render)
+  end)
+  if not ok then
+   warn("Shop render failed: "..tostring(err))
+   row("The shop could not finish loading. Check Studio Output for 'Shop render failed'.")
+  end
+ elseif not state then
+  row("Loading your inventory… Please wait for the server connection.")
  elseif page=="INVENTORY" then
   row("Tap owned skins to equip for future rounds. Tap emotes to perform them. Radios are cosmetic; pets follow you.")
   local items={}; for id in pairs(state.items) do table.insert(items,id) end; table.sort(items)
@@ -111,6 +127,7 @@ local function wireCharacter(char)
 end
 player.CharacterAdded:Connect(wireCharacter); if player.Character then wireCharacter(player.Character) end
 event.OnClientEvent:Connect(function(s)
+ if s.openShop then page="SHOP"; render(); return end
  local previous=state
  state=s
  local mins=math.floor(s.time/60); local secs=s.time%60
@@ -125,3 +142,9 @@ event.OnClientEvent:Connect(function(s)
  if page and (not previous or s.message~="" or previous.phase~=s.phase or previous.coins~=s.coins or previous.gems~=s.gems or page=="VOTE" or page=="SPECTATE") then render() end
 end)
 event:FireServer("Sync")
+task.spawn(function()
+ while not state do
+  task.wait(3)
+  if not state then event:FireServer("Sync") end
+ end
+end)

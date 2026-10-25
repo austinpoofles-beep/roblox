@@ -102,7 +102,7 @@ local function vote(p,index)
  if phase~="Voting" or not profiles[p] or typeof(index)~="number" or index%1~=0 or index<1 or index>3 then return end
  votes[p]=index; broadcast()
 end
-W.lobby(vote)
+W.lobby(vote,function(p) event:FireClient(p,{openShop=true}) end)
 Players.PlayerAdded:Connect(function(p)
  local entry={data=profile(),canSave=false,busy=false}; profiles[p]=entry
  local ok,loaded=pcall(function()

@@ -11,7 +11,7 @@ function W.sign(p,message)
  t.Font=Enum.Font.GothamBold; t.TextScaled=true; t.TextColor3=Color3.new(1,1,1); t.TextStrokeTransparency=0.3; t.Parent=g
  return t
 end
-function W.lobby(onVote)
+function W.lobby(onVote,onShop)
  local base=workspace:FindFirstChild("Baseplate"); if base then base:Destroy() end
  local f=Instance.new("Folder"); f.Name="SafeZone"; f.Parent=workspace
  part(f,"Courtyard",Vector3.new(150,8,150),Vector3.new(0,-4,0),Color3.fromRGB(48,61,76),Enum.Material.Slate)
@@ -30,6 +30,9 @@ function W.lobby(onVote)
  end
  for i,name in ipairs({"WEAPONS & CASES","EMOTES & RADIOS","PET CORNER"}) do
   local p=part(f,name,Vector3.new(14,7,12),Vector3.new(-49,3.5,(i-2)*28),Color3.fromRGB(58,103,107)); W.sign(p,name.."\nOpen SHOP")
+  local prompt=Instance.new("ProximityPrompt"); prompt.ActionText="Open shop"; prompt.ObjectText=name
+  prompt.MaxActivationDistance=15; prompt.HoldDuration=0; prompt.Parent=p
+  prompt.Triggered:Connect(onShop)
  end
  return f
 end
